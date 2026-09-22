@@ -1,0 +1,50 @@
+# Only the dashboard FRONTEND is containerized here - deliberately, not
+# as an oversight. Read why before assuming something's missing:
+#
+# The MetaTrader5 Python package (app/mt5/*) talks to a running MT5
+# terminal over a LOCAL IPC channel (named pipes / shared memory on the
+# same Windows machine) - it is not a network protocol, has no host:port
+# to point at, and cannot reach a terminal running anywhere but the same
+# OS instance the Python process is in. That means:
+#   - The backend (app/api/server.py) cannot run in a standard Linux
+#     container, because there is no Linux build of the MT5 terminal for
+#     it to talk to.
+#   - It technically can't reliably run in a Windows *container* either -
+#     Windows containers still isolate named-pipe/IPC namespaces from the
+#     host in most configurations, so a terminal running on the host
+#     Windows machine is generally NOT reachable from inside a Windows
+#     container without additional, unverified plumbing this repo does
+#     not attempt (better to say so than to ship a Dockerfile that
+#     silently fails to connect).
+#
+# The supported deployment shape is: run the backend NATIVELY on a
+# Windows machine that also runs the MT5 terminal (`python -m
+# app.api.server`, or wrap it as a Windows service with NSSM / Task
+# Scheduler for auto-start), and optionally containerize just the
+# dashboard frontend, pointed at that backend's host:port. That's what
+# this compose file does.
+#
+# Usage:
+#   1. On the Windows host: python -m app.api.server   (binds 127.0.0.1:8000
+#      by default - see README for exposing it to this container safely,
+#      including the mandatory API_KEY once you go beyond loopback)
+#   2. docker compose up --build
+#   3. Open http://localhost:8080
+
+services:
+  dashboard:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_KEY: "${VITE_API_KEY:-}"
+    ports:
+      - "8080:80"
+    environment:
+      # host.docker.internal resolves to the Docker host from inside the
+      # container on Docker Desktop (Windows/Mac). On Linux hosts, replace
+      # with the host's actual LAN IP, or add extra_hosts below.
+      BACKEND_HOST: "${BACKEND_HOST:-host.docker.internal}"
+      BACKEND_PORT: "${BACKEND_PORT:-8000}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

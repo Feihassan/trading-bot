@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b0f17;
+  --color-panel: #121826;
+  --color-panel-border: #1f2937;
+  --color-buy: #22c55e;
+  --color-sell: #ef4444;
+  --color-wait: #94a3b8;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: #e5e7eb;
+}

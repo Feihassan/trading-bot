@@ -1,0 +1,30 @@
+# Serves the built dashboard and proxies /api + /ws to the backend, the
+# same split vite.config.js's dev server proxy does locally. BACKEND_HOST
+# is set via docker-compose (defaults to "host.docker.internal" so a
+# container can reach a backend running natively on the Docker host,
+# which is the expected topology - see the README/compose file for why).
+
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /ws/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT}/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

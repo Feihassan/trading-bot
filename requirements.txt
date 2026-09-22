@@ -1,0 +1,38 @@
+# --- Core / MT5 ---
+MetaTrader5==5.0.5120
+pandas==2.2.3
+numpy==2.1.3
+
+# --- Technical analysis ---
+ta==0.11.0
+
+# --- Machine learning ---
+scikit-learn==1.5.2
+xgboost==2.1.3
+joblib==1.4.2
+
+# --- Config / validation ---
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# --- API / backend ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+websockets==13.1
+
+# --- Database ---
+SQLAlchemy==2.0.36
+
+# --- Notifications (optional) / LLM analysis layer (optional) ---
+# Both just need to make outbound HTTP calls (Telegram's sendMessage API,
+# an OpenAI-compatible chat completions endpoint) - no need for a full
+# bot-framework dependency (python-telegram-bot) when a plain HTTP client
+# does the job with far less surface area.
+httpx==0.27.2
+
+# --- Testing ---
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==7.1.0
+freezegun==1.5.1
