@@ -18,7 +18,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # pragma: no cover - Windows-only package, absent on Linux (e.g. Render)
+    mt5 = None
 import pandas as pd
 
 from app.config import Settings, get_settings
@@ -27,15 +30,19 @@ from app.mt5.connection import MT5Error
 
 logger = get_logger("mt5.market_data")
 
-TIMEFRAME_MAP: dict[str, int] = {
-    "M1": mt5.TIMEFRAME_M1,
-    "M5": mt5.TIMEFRAME_M5,
-    "M15": mt5.TIMEFRAME_M15,
-    "M30": mt5.TIMEFRAME_M30,
-    "H1": mt5.TIMEFRAME_H1,
-    "H4": mt5.TIMEFRAME_H4,
-    "D1": mt5.TIMEFRAME_D1,
-}
+TIMEFRAME_MAP: dict[str, int] = (
+    {
+        "M1": mt5.TIMEFRAME_M1,
+        "M5": mt5.TIMEFRAME_M5,
+        "M15": mt5.TIMEFRAME_M15,
+        "M30": mt5.TIMEFRAME_M30,
+        "H1": mt5.TIMEFRAME_H1,
+        "H4": mt5.TIMEFRAME_H4,
+        "D1": mt5.TIMEFRAME_D1,
+    }
+    if mt5 is not None
+    else {}
+)
 
 CANDLE_COLUMNS = ["time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume"]
 
@@ -53,6 +60,8 @@ def resolve_symbol(canonical: str, settings: Settings | None = None) -> str:
 
 
 def _ensure_symbol_selected(broker_symbol: str) -> None:
+    if mt5 is None:
+        raise MarketDataError("MetaTrader5 package is not available in this environment (Windows-only)")
     info = mt5.symbol_info(broker_symbol)
     if info is None:
         err = MT5Error.last()
@@ -70,6 +79,8 @@ def get_candles(
     start_pos: int = 0,
 ) -> pd.DataFrame:
     """Fetch the most recent `count` candles ending `start_pos` bars back."""
+    if mt5 is None:
+        raise MarketDataError("MetaTrader5 package is not available in this environment (Windows-only)")
     if timeframe not in TIMEFRAME_MAP:
         raise MarketDataError(f"Unsupported timeframe '{timeframe}'. Supported: {list(TIMEFRAME_MAP)}")
 
@@ -93,6 +104,8 @@ def get_candles_range(
     date_to: datetime,
 ) -> pd.DataFrame:
     """Fetch candles between two UTC datetimes - used by backtesting/training."""
+    if mt5 is None:
+        raise MarketDataError("MetaTrader5 package is not available in this environment (Windows-only)")
     if timeframe not in TIMEFRAME_MAP:
         raise MarketDataError(f"Unsupported timeframe '{timeframe}'. Supported: {list(TIMEFRAME_MAP)}")
 

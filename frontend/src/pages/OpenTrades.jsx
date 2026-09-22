@@ -1,5 +1,5 @@
 import { api } from "../api";
-import { Badge, directionTone, ErrorPanel, fmtNumber, LoadingRow, Panel } from "../components/ui.jsx";
+import { Badge, directionTone, ErrorPanel, fmtNumber, LoadingRow, Panel, TableContainer } from "../components/ui.jsx";
 import { usePolling } from "../hooks/usePolling";
 
 export default function OpenTrades() {
@@ -11,7 +11,8 @@ export default function OpenTrades() {
       {error && <ErrorPanel message={`Could not load positions: ${error}`} />}
 
       <Panel title={`Open positions ${positions ? `(${positions.length})` : ""}`}>
-        <table className="w-full text-sm">
+        <TableContainer>
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-gray-800 text-left text-xs text-gray-500 uppercase">
               <th className="py-2">Ticket</th>
@@ -54,6 +55,7 @@ export default function OpenTrades() {
             ))}
           </tbody>
         </table>
+        </TableContainer>
       </Panel>
     </div>
   );

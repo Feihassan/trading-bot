@@ -26,8 +26,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-import MetaTrader5 as mt5
-
 from app.config import Settings, TradingMode
 from app.logging_setup import get_logger
 from app.mt5.account import get_account_info, get_open_positions, is_demo_account, is_real_account

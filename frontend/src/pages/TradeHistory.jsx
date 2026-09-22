@@ -1,5 +1,5 @@
 import { api } from "../api";
-import { Badge, directionTone, ErrorPanel, fmtNumber, LoadingRow, Panel } from "../components/ui.jsx";
+import { Badge, directionTone, ErrorPanel, fmtNumber, LoadingRow, Panel, TableContainer } from "../components/ui.jsx";
 import { usePolling } from "../hooks/usePolling";
 
 export default function TradeHistory() {
@@ -16,7 +16,8 @@ export default function TradeHistory() {
       {error && <ErrorPanel message={`Could not load journal: ${error}`} />}
 
       <Panel>
-        <table className="w-full text-sm">
+        <TableContainer>
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-gray-800 text-left text-xs text-gray-500 uppercase">
               <th className="py-2">Time</th>
@@ -62,6 +63,7 @@ export default function TradeHistory() {
             ))}
           </tbody>
         </table>
+        </TableContainer>
       </Panel>
     </div>
   );

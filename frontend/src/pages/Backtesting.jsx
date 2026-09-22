@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api, SYMBOLS } from "../api";
-import { ErrorPanel, fmtNumber, fmtPct, Panel, StatCard } from "../components/ui.jsx";
+import { Button, ErrorPanel, fmtNumber, fmtPct, Panel, Select, StatCard, TableContainer, TextInput } from "../components/ui.jsx";
 
 const TIMEFRAMES = ["M15", "M30", "H1", "H4", "D1"];
 
@@ -48,60 +48,56 @@ export default function Backtesting() {
       <Panel>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
           <Field label="Symbol">
-            <select value={form.symbol} onChange={(e) => update("symbol", e.target.value)} className={inputClass}>
+            <Select value={form.symbol} onChange={(e) => update("symbol", e.target.value)} className="w-full">
               {SYMBOLS.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field label="Timeframe">
-            <select value={form.timeframe} onChange={(e) => update("timeframe", e.target.value)} className={inputClass}>
+            <Select value={form.timeframe} onChange={(e) => update("timeframe", e.target.value)} className="w-full">
               {TIMEFRAMES.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field label="Days of history">
-            <input type="number" value={form.days} onChange={(e) => update("days", Number(e.target.value))} className={inputClass} />
+            <TextInput type="number" value={form.days} onChange={(e) => update("days", Number(e.target.value))} className="w-full" />
           </Field>
           <Field label="Initial balance">
-            <input
+            <TextInput
               type="number"
               value={form.initial_balance}
               onChange={(e) => update("initial_balance", Number(e.target.value))}
-              className={inputClass}
+              className="w-full"
             />
           </Field>
           <Field label="Risk / trade">
-            <input
+            <TextInput
               type="number"
               step="0.001"
               value={form.risk_per_trade}
               onChange={(e) => update("risk_per_trade", Number(e.target.value))}
-              className={inputClass}
+              className="w-full"
             />
           </Field>
           <Field label="Min R:R">
-            <input
+            <TextInput
               type="number"
               step="0.1"
               value={form.min_risk_reward}
               onChange={(e) => update("min_risk_reward", Number(e.target.value))}
-              className={inputClass}
+              className="w-full"
             />
           </Field>
         </div>
-        <button
-          onClick={runBacktest}
-          disabled={loading}
-          className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
+        <Button onClick={runBacktest} disabled={loading} className="mt-4">
           {loading ? "Running backtest…" : "Run Backtest"}
-        </button>
+        </Button>
       </Panel>
 
       {error && <ErrorPanel message={error} />}
@@ -141,7 +137,8 @@ export default function Backtesting() {
 
           <Panel title={`Trades (${result.trades.length})`}>
             <div className="max-h-96 overflow-y-auto">
-              <table className="w-full text-sm">
+              <TableContainer>
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-left text-xs text-gray-500 uppercase">
                     <th className="py-2">Direction</th>
@@ -167,6 +164,7 @@ export default function Backtesting() {
                   ))}
                 </tbody>
               </table>
+              </TableContainer>
             </div>
           </Panel>
         </>
@@ -174,8 +172,6 @@ export default function Backtesting() {
     </div>
   );
 }
-
-const inputClass = "rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 w-full";
 
 function Field({ label, children }) {
   return (

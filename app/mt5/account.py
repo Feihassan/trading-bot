@@ -11,7 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # pragma: no cover - Windows-only package, absent on Linux (e.g. Render)
+    mt5 = None
 
 from app.logging_setup import get_logger
 from app.mt5.connection import MT5Error
@@ -144,10 +147,14 @@ def get_closed_pnl_between(date_from: datetime, date_to: datetime, magic: int | 
     return sum(d.profit + d.swap + d.commission for d in deals if d.entry == 1)
 
 
-_DEAL_REASON_TO_EXIT = {
-    mt5.DEAL_REASON_SL: "SL",
-    mt5.DEAL_REASON_TP: "TP",
-}
+_DEAL_REASON_TO_EXIT = (
+    {
+        mt5.DEAL_REASON_SL: "SL",
+        mt5.DEAL_REASON_TP: "TP",
+    }
+    if mt5 is not None
+    else {}
+)
 
 
 @dataclass

@@ -24,7 +24,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # pragma: no cover - Windows-only package, absent on Linux (e.g. Render)
+    mt5 = None
 
 from app.logging_setup import get_logger
 from app.mt5.connection import MT5Error
@@ -33,8 +36,9 @@ logger = get_logger("mt5.orders")
 
 Direction = Literal["BUY", "SELL"]
 
-_ORDER_TYPE = {"BUY": mt5.ORDER_TYPE_BUY, "SELL": mt5.ORDER_TYPE_SELL}
-_CLOSE_ORDER_TYPE = {"BUY": mt5.ORDER_TYPE_SELL, "SELL": mt5.ORDER_TYPE_BUY}  # closing a BUY = selling, and vice versa
+_ORDER_TYPE = {"BUY": mt5.ORDER_TYPE_BUY, "SELL": mt5.ORDER_TYPE_SELL} if mt5 is not None else {}
+# closing a BUY = selling, and vice versa
+_CLOSE_ORDER_TYPE = {"BUY": mt5.ORDER_TYPE_SELL, "SELL": mt5.ORDER_TYPE_BUY} if mt5 is not None else {}
 
 
 @dataclass
@@ -91,6 +95,8 @@ def submit_market_order(
     magic: int,
     comment: str = "",
 ) -> OrderResult:
+    if mt5 is None:
+        return OrderResult(False, None, "MetaTrader5 package is not available in this environment (Windows-only)", None, None, None, {})
     tick = mt5.symbol_info_tick(broker_symbol)
     if tick is None:
         err = MT5Error.last()
@@ -149,6 +155,8 @@ def submit_market_order(
 
 
 def modify_position_sltp(ticket: int, stop_loss: float, take_profit: float) -> OrderResult:
+    if mt5 is None:
+        return OrderResult(False, None, "MetaTrader5 package is not available in this environment (Windows-only)", None, None, None, {})
     position = next((p for p in (mt5.positions_get(ticket=ticket) or ())), None)
     if position is None:
         return OrderResult(False, None, f"Position {ticket} not found", None, None, None, {})
@@ -178,6 +186,8 @@ def modify_position_sltp(ticket: int, stop_loss: float, take_profit: float) -> O
 
 
 def close_position(ticket: int, deviation_points: int) -> OrderResult:
+    if mt5 is None:
+        return OrderResult(False, None, "MetaTrader5 package is not available in this environment (Windows-only)", None, None, None, {})
     position = next((p for p in (mt5.positions_get(ticket=ticket) or ())), None)
     if position is None:
         return OrderResult(False, None, f"Position {ticket} not found", None, None, None, {})

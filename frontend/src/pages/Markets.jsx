@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { ErrorPanel, fmtNumber, LoadingRow, Panel } from "../components/ui.jsx";
+import { ErrorPanel, fmtNumber, LoadingRow, Panel, TableContainer } from "../components/ui.jsx";
 import { useLiveSocket } from "../hooks/useLiveSocket";
 import { usePolling } from "../hooks/usePolling";
 
@@ -15,7 +15,8 @@ export default function Markets() {
       {error && <ErrorPanel message={`Could not load symbols: ${error}`} />}
 
       <Panel title="Live quotes">
-        <table className="w-full text-sm">
+        <TableContainer>
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-gray-800 text-left text-xs text-gray-500 uppercase">
               <th className="py-2">Symbol</th>
@@ -52,6 +53,7 @@ export default function Markets() {
             })}
           </tbody>
         </table>
+        </TableContainer>
       </Panel>
     </div>
   );

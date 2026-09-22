@@ -1,0 +1,22 @@
+# Frontend-only deploy. The backend (FastAPI + MT5) is not hosted here -
+# see README.md "Hosting the backend on Render" for why, and render.yaml
+# for the backend deploy when you're ready for it. Until a backend is
+# wired up, requests to /api/* and /ws/* from this deployed frontend will
+# simply fail (no proxy target configured) - the dashboard is expected to
+# be viewed with a local backend for now.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# React Router uses browser history (BrowserRouter), so a direct load or
+# refresh on any client-side route (e.g. /markets, /risk) must fall back
+# to index.html rather than 404 on Netlify's static file server.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

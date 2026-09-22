@@ -1,0 +1,37 @@
+# Render blueprint for the FastAPI backend. Read "Hosting the backend on
+# Render (why it's limited)" in README.md before deploying this - the
+# MetaTrader5 package only works on Windows next to a running MT5
+# terminal, so every MT5-dependent endpoint (account, positions, symbols,
+# signals, backtest, /ws/live) will return a clean error on Render. This
+# gets the API installable/bootable in the cloud; it does not make MT5
+# functionality work there.
+services:
+  - type: web
+    name: trading-bot-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.api.server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Mandatory: binding off loopback (required for Render to reach the
+      # process at all) makes API_KEY mandatory too - app/config.py
+      # refuses to start otherwise. Set the actual value in the Render
+      # dashboard, never commit it here.
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_KEY
+        sync: false
+      - key: TRADING_MODE
+        value: DRY_RUN
+      - key: SYMBOLS
+        value: EURUSD,GBPUSD,USDJPY,AUDUSD,USDCHF,USDCAD,NZDUSD,XAUUSD:XAUUSDm
+      - key: DATABASE_URL
+        value: sqlite:///./data/trading_bot.db
+      - key: LOG_DIR
+        value: ./logs
+      # Optional - only needed if you enable these features; leave unset
+      # otherwise. Uncomment and set in the Render dashboard if used.
+      # - key: TELEGRAM_BOT_TOKEN
+      #   sync: false
+      # - key: LLM_API_KEY
+      #   sync: false

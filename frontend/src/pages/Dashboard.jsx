@@ -21,26 +21,41 @@ export default function Dashboard() {
       {accountError && <ErrorPanel message={`Account data unavailable: ${accountError}`} />}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Balance" value={account ? `$${fmtNumber(account.balance)}` : "—"} sub={account?.currency} />
-        <StatCard label="Equity" value={equity !== undefined ? `$${fmtNumber(equity)}` : "—"} />
+        <StatCard
+          label="Balance"
+          value={account ? `$${fmtNumber(account.balance)}` : "—"}
+          sub={account?.currency}
+          loading={accountLoading && !account}
+        />
+        <StatCard
+          label="Equity"
+          value={equity !== undefined ? `$${fmtNumber(equity)}` : "—"}
+          loading={accountLoading && equity === undefined}
+        />
         <StatCard
           label="Today's P/L"
           value={dailyPnl !== undefined ? `${dailyPnl >= 0 ? "+" : ""}$${fmtNumber(dailyPnl)}` : "—"}
           sub={account ? fmtPct(account.daily_pnl_pct) : undefined}
           tone={dailyPnl > 0 ? "good" : dailyPnl < 0 ? "bad" : "neutral"}
+          loading={accountLoading && dailyPnl === undefined}
         />
         <StatCard
           label="Drawdown from Peak"
           value={account ? fmtPct(account.drawdown_from_peak_pct) : "—"}
           tone={account && account.drawdown_from_peak_pct > 0.05 ? "warn" : "neutral"}
+          loading={accountLoading && !account}
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Open Positions" value={positions ? positions.length : accountLoading ? "…" : "0"} />
         <StatCard label="Trades Recorded Today" value={executedToday} sub="from local trade journal" />
-        <StatCard label="Margin Used" value={account ? `$${fmtNumber(account.margin)}` : "—"} />
-        <StatCard label="Free Margin" value={account ? `$${fmtNumber(account.margin_free)}` : "—"} />
+        <StatCard label="Margin Used" value={account ? `$${fmtNumber(account.margin)}` : "—"} loading={accountLoading && !account} />
+        <StatCard
+          label="Free Margin"
+          value={account ? `$${fmtNumber(account.margin_free)}` : "—"}
+          loading={accountLoading && !account}
+        />
       </div>
 
       <Panel title="About this dashboard">

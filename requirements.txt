@@ -1,5 +1,10 @@
 # --- Core / MT5 ---
-MetaTrader5==5.0.5120
+# Windows-only package (wraps the local MT5 terminal's IPC API - no Linux
+# build exists). The platform marker lets `pip install -r requirements.txt`
+# succeed on Linux hosts (e.g. Render) instead of failing outright; MT5-
+# dependent code paths are guarded to raise a clear runtime error there
+# instead of crashing at import time - see app/mt5/*.py.
+MetaTrader5==5.0.5120; sys_platform == "win32"
 pandas==2.2.3
 numpy==2.1.3
 

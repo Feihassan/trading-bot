@@ -189,6 +189,39 @@ image's own documented `envsubst`-on-templates mechanism for
 compose up --build` you run as the actual first test of it, not a
 formality.
 
+### 9. Hosting the backend on Render (why it's limited)
+
+Same underlying constraint as Docker, worse consequence: Render only
+runs Linux, and `MetaTrader5` has no Linux build at all — `pip install`
+fails outright, not just at connection time. `requirements.txt` marks
+the dependency Windows-only (`; sys_platform == "win32"`) so it's
+skipped during a Linux install instead of failing the build, and every
+`app/mt5/*.py` module now guards its `import MetaTrader5` and falls
+back to raising a clear `MT5ConnectionError`/`MarketDataError` instead
+of crashing at import time. That makes the FastAPI app installable and
+bootable on Render — it does **not** make MT5 functionality work there.
+
+What that gets you on Render: the process starts, `/api/status` and
+`/api/risk` respond (they don't need MT5), and every endpoint that
+does — `/api/account`, `/api/positions`, `/api/symbols`,
+`/api/signals/*`, `/api/backtest` (it fetches history via MT5 too),
+and `/ws/live` — returns a clean `503`/error field forever, because
+there is no MT5 terminal on Render's side for the package to talk to
+even if it could be installed. This is a way to deploy the dashboard
+API shape (e.g. to develop/host the frontend against a real backend
+domain) without it ever doing real trading work — not a way to run the
+actual bot in the cloud. The bot itself still has to run natively on a
+Windows machine next to the MT5 terminal, per Setup step 7/8.
+
+If you do deploy this, `API_HOST` must be set to `0.0.0.0` (Render
+only reaches processes bound to all interfaces) — and per the safety
+model above, that makes `API_KEY` mandatory; the app refuses to start
+without it rather than sitting unauthenticated on a public URL. A
+`render.yaml` blueprint is included with the build/start commands and
+required env vars wired up (`API_KEY` and `LLM_API_KEY`/
+`TELEGRAM_BOT_TOKEN`, if used, are marked `sync: false` — set them in
+the Render dashboard, never commit them).
+
 ## Project structure
 
 ```

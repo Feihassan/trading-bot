@@ -22,7 +22,10 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # pragma: no cover - Windows-only package, absent on Linux (e.g. Render)
+    mt5 = None
 
 from app.config import Settings, get_settings
 from app.logging_setup import get_logger
@@ -90,6 +93,11 @@ class MT5Connection:
             raise MT5ConnectionError(f"Could not connect to MT5 after {retries} attempts") from last_exc
 
     def _do_connect(self) -> None:
+        if mt5 is None:
+            raise MT5ConnectionError(
+                "MetaTrader5 package is not installed in this environment (it only ships for "
+                "Windows, next to a running MT5 terminal) - this process cannot connect to MT5."
+            )
         init_kwargs: dict[str, Any] = {}
         if self.settings.mt5_path:
             init_kwargs["path"] = self.settings.mt5_path
@@ -120,7 +128,8 @@ class MT5Connection:
 
     def shutdown(self) -> None:
         with self._lock:
-            mt5.shutdown()
+            if mt5 is not None:
+                mt5.shutdown()
             self._connected = False
             logger.info("MT5 connection shut down")
 
@@ -153,6 +162,8 @@ class MT5Connection:
 
     def terminal_info(self) -> dict[str, Any] | None:
         with self._lock:
+            if mt5 is None:
+                return None
             info = mt5.terminal_info()
             return info._asdict() if info else None
 

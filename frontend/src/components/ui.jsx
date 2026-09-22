@@ -12,7 +12,7 @@ export function Panel({ title, right, children, className = "" }) {
   );
 }
 
-export function StatCard({ label, value, sub, tone = "neutral" }) {
+export function StatCard({ label, value, sub, tone = "neutral", loading = false }) {
   const toneClass = {
     neutral: "text-gray-100",
     good: "text-emerald-400",
@@ -23,7 +23,11 @@ export function StatCard({ label, value, sub, tone = "neutral" }) {
   return (
     <div className="rounded-xl border border-gray-800 bg-[#121826] p-4">
       <div className="text-xs font-medium tracking-wide text-gray-500 uppercase">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</div>
+      {loading ? (
+        <div className="mt-2 h-7 w-20 animate-pulse rounded bg-gray-800" />
+      ) : (
+        <div className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</div>
+      )}
       {sub && <div className="mt-1 text-xs text-gray-500">{sub}</div>}
     </div>
   );
@@ -32,9 +36,9 @@ export function StatCard({ label, value, sub, tone = "neutral" }) {
 export function Badge({ children, tone = "neutral" }) {
   const toneClass = {
     neutral: "bg-gray-700/50 text-gray-300 border-gray-600",
-    buy: "bg-emerald-500/10 text-emerald-400 border-emerald-500/40",
-    sell: "bg-red-500/10 text-red-400 border-red-500/40",
-    wait: "bg-slate-500/10 text-slate-400 border-slate-500/40",
+    buy: "bg-[var(--color-buy)]/10 text-[var(--color-buy)] border-[var(--color-buy)]/40",
+    sell: "bg-[var(--color-sell)]/10 text-[var(--color-sell)] border-[var(--color-sell)]/40",
+    wait: "bg-[var(--color-wait)]/10 text-[var(--color-wait)] border-[var(--color-wait)]/40",
     good: "bg-emerald-500/10 text-emerald-400 border-emerald-500/40",
     bad: "bg-red-500/10 text-red-400 border-red-500/40",
     warn: "bg-amber-500/10 text-amber-400 border-amber-500/40",
@@ -45,6 +49,37 @@ export function Badge({ children, tone = "neutral" }) {
       {children}
     </span>
   );
+}
+
+const fieldClass =
+  "rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:outline-none";
+
+export function Select({ className = "", ...props }) {
+  return <select className={`${fieldClass} ${className}`} {...props} />;
+}
+
+export function TextInput({ className = "", ...props }) {
+  return <input className={`${fieldClass} ${className}`} {...props} />;
+}
+
+const buttonVariants = {
+  primary: "bg-indigo-600 text-white hover:bg-indigo-500",
+  danger: "bg-red-600 text-white hover:bg-red-500",
+  success: "bg-emerald-600 text-white hover:bg-emerald-500",
+  ghost: "border border-gray-700 text-gray-300 hover:bg-gray-800",
+};
+
+export function Button({ variant = "primary", className = "", ...props }) {
+  return (
+    <button
+      className={`rounded-md px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${buttonVariants[variant]} ${className}`}
+      {...props}
+    />
+  );
+}
+
+export function TableContainer({ children }) {
+  return <div className="overflow-x-auto">{children}</div>;
 }
 
 export function directionTone(direction) {

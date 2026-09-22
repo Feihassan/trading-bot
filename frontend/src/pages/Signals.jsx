@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, SYMBOLS } from "../api";
-import { Badge, directionTone, ErrorPanel, fmtNumber, Panel } from "../components/ui.jsx";
+import { Badge, Button, directionTone, ErrorPanel, fmtNumber, Panel, Select } from "../components/ui.jsx";
 
 export default function Signals() {
   const [params, setParams] = useSearchParams();
@@ -33,32 +33,27 @@ export default function Signals() {
         <div className="flex flex-wrap items-end gap-4">
           <div>
             <label className="mb-1 block text-xs text-gray-500 uppercase">Symbol</label>
-            <select
+            <Select
               value={symbol}
               onChange={(e) => {
                 setSymbol(e.target.value);
                 setParams({ symbol: e.target.value });
               }}
-              className="rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200"
             >
               {SYMBOLS.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <label className="flex items-center gap-2 pb-2 text-sm text-gray-400">
             <input type="checkbox" checked={useMl} onChange={(e) => setUseMl(e.target.checked)} />
             Include ML confirmation (trains/loads a model — slower first request)
           </label>
-          <button
-            onClick={fetchSignal}
-            disabled={loading}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-          >
+          <Button onClick={fetchSignal} disabled={loading}>
             {loading ? "Analyzing…" : "Get Signal"}
-          </button>
+          </Button>
         </div>
       </Panel>
 
