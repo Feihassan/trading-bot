@@ -13,6 +13,12 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.api.server:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Without this, Render defaults to its latest Python (3.14 as of
+      # writing), for which pandas==2.2.3 has no prebuilt wheel - pip falls
+      # back to a from-source build that's extremely slow and can hang the
+      # build entirely. Also mirrored in .python-version at the repo root.
+      - key: PYTHON_VERSION
+        value: 3.12.7
       # Mandatory: binding off loopback (required for Render to reach the
       # process at all) makes API_KEY mandatory too - app/config.py
       # refuses to start otherwise. Set the actual value in the Render
