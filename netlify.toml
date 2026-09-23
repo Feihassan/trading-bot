@@ -1,16 +1,21 @@
-# Backend is deployed on Render (see render.yaml) - MT5-dependent endpoints
-# return a clean error there since there's no MT5 terminal on Linux, but
-# /api/status, /api/risk, and /api/logs work for real. These proxy rules
-# forward same-origin requests from this Netlify site to that backend, so
-# the frontend's `const BASE = "/api"` in api.js needs no code change.
+# Backend is a Cloudflare Tunnel quick-tunnel pointed at the real backend
+# running natively on the Windows machine next to the MT5 terminal, so
+# this gets REAL live account/position/signal data (unlike render.yaml's
+# Render deploy, which has no MT5 terminal available - see README).
 #
-# CAVEAT: Netlify's redirect proxying does not support WebSocket upgrades,
-# so /ws/live will not actually connect through this proxy - the "Live
-# feed" badge will show "Reconnecting..." permanently on this deployment.
-# Everything else (REST polling) works. Fixing this for real requires
-# either a WebSocket-capable edge/proxy in front of the backend, or
-# pointing VITE_WS_BASE directly at the Render backend's wss:// origin
-# (CORS/WS origin allowlist on the backend would need updating too).
+# CAVEAT 1 - fragile URL: this is an account-less Cloudflare "quick
+# tunnel" (no uptime guarantee, per Cloudflare's own docs). Its URL is
+# regenerated every time `cloudflared` restarts or the Windows machine
+# reboots - when that happens, this redirect target goes stale and must
+# be updated + redeployed. For anything long-lived, replace this with a
+# named Cloudflare Tunnel tied to a real domain (needs a Cloudflare
+# account with a zone) instead of a quick tunnel.
+# CAVEAT 2 - WebSocket: Netlify's redirect proxying does not support
+# WebSocket upgrades regardless of target, so /ws/live will not actually
+# connect through this proxy - the "Live feed" badge stays on
+# "Reconnecting...". Everything else (REST polling) works.
+# CAVEAT 3 - matching key: VITE_API_KEY (Netlify env var, build-time)
+# must match this backend's local .env API_KEY, not render.yaml's.
 
 [build]
   base = "frontend"
@@ -22,13 +27,13 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://trading-bot-api-bb6i.onrender.com/api/:splat"
+  to = "https://laptop-raymond-band-herbs.trycloudflare.com/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/ws/*"
-  to = "https://trading-bot-api-bb6i.onrender.com/ws/:splat"
+  to = "https://laptop-raymond-band-herbs.trycloudflare.com/ws/:splat"
   status = 200
   force = true
 
