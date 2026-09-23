@@ -27,13 +27,13 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://laptop-raymond-band-herbs.trycloudflare.com/api/:splat"
+  to = "https://und-sao-simpson-dir.trycloudflare.com/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/ws/*"
-  to = "https://laptop-raymond-band-herbs.trycloudflare.com/ws/:splat"
+  to = "https://und-sao-simpson-dir.trycloudflare.com/ws/:splat"
   status = 200
   force = true
 
