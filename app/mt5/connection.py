@@ -139,6 +139,11 @@ class MT5Connection:
             if self.is_connected():
                 return
             logger.warning("MT5 connection appears lost; attempting reconnect")
+            # After the terminal restarts, the old IPC session is dead
+            # ("IPC send failed") and initialize() won't replace it until
+            # it's shut down.
+            if mt5 is not None:
+                mt5.shutdown()
             self.connect()
 
     def is_connected(self) -> bool:

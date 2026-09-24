@@ -93,9 +93,30 @@ async def lifespan(app: FastAPI):
         notifier=notifier,
     )
     watcher_task = asyncio.create_task(_closed_trade_watcher(app.state.trading))
+    reconnect_task = asyncio.create_task(_mt5_reconnector(app.state.trading))
     yield
     watcher_task.cancel()
+    reconnect_task.cancel()
     connection.shutdown()
+
+
+async def _mt5_reconnector(state: AppState) -> None:
+    """Reconnects to MT5 whenever the connection drops. Without this, a
+    terminal restart (or starting the API before the terminal) left every
+    MT5-backed endpoint returning 503 until the API process was restarted."""
+    was_connected = state.connection.is_connected()
+    while True:
+        await asyncio.sleep(15.0)
+        try:
+            await asyncio.to_thread(state.connection.ensure_connected)
+            if not was_connected:
+                logger.info("MT5 connection restored")
+                was_connected = True
+        except Exception as exc:  # noqa: BLE001 - keep retrying until MT5 is back
+            if was_connected:
+                state.notifier.notify_disconnected(f"Lost MT5 connection, retrying every 15s: {exc}")
+            logger.warning(f"MT5 reconnect failed: {exc}")
+            was_connected = False
 
 
 async def _closed_trade_watcher(state: AppState) -> None:
