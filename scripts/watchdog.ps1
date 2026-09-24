@@ -129,7 +129,12 @@ function Publish-BackendUrl([string]$Url) {
                 Log 'Netlify already has this URL - no rebuild needed'
                 return $true
             }
-            Invoke-Netlify PATCH "$envPath/VITE_BACKEND_URL$q" @{ context = 'all'; value = $Url } | Out-Null
+            # PUT replaces the whole variable. PATCH (the "update one value"
+            # endpoint) was observed to return 422 or silently not apply.
+            Invoke-Netlify PUT "$envPath/VITE_BACKEND_URL$q" @{
+                key = 'VITE_BACKEND_URL'; scopes = @('builds', 'functions', 'post_processing', 'runtime')
+                values = @(@{ context = 'all'; value = $Url })
+            } | Out-Null
         } else {
             Invoke-Netlify POST "$envPath$q" @(@{ key = 'VITE_BACKEND_URL'; values = @(@{ context = 'all'; value = $Url }) }) | Out-Null
         }
