@@ -99,7 +99,7 @@ function Invoke-Netlify([string]$Method, [string]$Path, $Body) {
         Headers = @{ Authorization = "Bearer $($Env_['NETLIFY_AUTH_TOKEN'])" }
         ContentType = 'application/json'
     }
-    if ($null -ne $Body) { $params.Body = ($Body | ConvertTo-Json -Depth 5 -Compress) }
+    if ($null -ne $Body) { $params.Body = ConvertTo-Json -InputObject $Body -Depth 5 -Compress }
     Invoke-RestMethod @params
 }
 
