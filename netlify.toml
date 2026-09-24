@@ -1,46 +1,30 @@
-# Backend is a Cloudflare Tunnel quick-tunnel pointed at the real backend
-# running natively on the Windows machine next to the MT5 terminal, so
-# this gets REAL live account/position/signal data (unlike render.yaml's
-# Render deploy, which has no MT5 terminal available - see README).
+# The backend runs natively on the Windows machine next to the MT5
+# terminal (render.yaml's Render deploy has no MT5 - see README) and is
+# exposed through a Cloudflare quick tunnel. A quick tunnel's URL changes
+# every time cloudflared restarts, so it is NOT hardcoded here:
 #
-# CAVEAT 1 - fragile URL: this is an account-less Cloudflare "quick
-# tunnel" (no uptime guarantee, per Cloudflare's own docs). Its URL is
-# regenerated every time `cloudflared` restarts or the Windows machine
-# reboots - when that happens, this redirect target goes stale and must
-# be updated + redeployed. For anything long-lived, replace this with a
-# named Cloudflare Tunnel tied to a real domain (needs a Cloudflare
-# account with a zone) instead of a quick tunnel.
-# CAVEAT 2 - WebSocket: Netlify's redirect proxying does not support
-# WebSocket upgrades regardless of target, so /ws/live will not actually
-# connect through this proxy - the "Live feed" badge stays on
-# "Reconnecting...". Everything else (REST polling) works.
-# CAVEAT 3 - matching key: VITE_API_KEY (Netlify env var, build-time)
-# must match this backend's local .env API_KEY, not render.yaml's.
+# - scripts/watchdog.ps1 (started at logon by scripts/install-autostart.ps1)
+#   keeps the backend + tunnel running, and whenever the tunnel URL changes
+#   it sets the VITE_BACKEND_URL Netlify env var and triggers a rebuild.
+# - The build writes dist/_redirects proxying /api/* to that URL
+#   (frontend/scripts/write-redirects.mjs).
+# - /ws/live connects straight to VITE_BACKEND_URL from the browser,
+#   because Netlify's proxy can't carry WebSocket upgrades.
+#
+# VITE_API_KEY (Netlify env var, build-time) must match the local .env API_KEY.
 
 [build]
   base = "frontend"
-  command = "npm run build"
+  command = "npm run build && node scripts/write-redirects.mjs"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
 
-[[redirects]]
-  from = "/api/*"
-  to = "https://und-sao-simpson-dir.trycloudflare.com/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/ws/*"
-  to = "https://und-sao-simpson-dir.trycloudflare.com/ws/:splat"
-  status = 200
-  force = true
-
 # React Router uses browser history (BrowserRouter), so a direct load or
 # refresh on any client-side route (e.g. /markets, /risk) must fall back
-# to index.html rather than 404 on Netlify's static file server. Must come
-# after the /api and /ws rules above - first match wins.
+# to index.html rather than 404 on Netlify's static file server. The /api
+# proxy rule lives in the generated _redirects, which Netlify evaluates first.
 [[redirects]]
   from = "/*"
   to = "/index.html"
