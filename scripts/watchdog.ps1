@@ -1,11 +1,15 @@
 # Keeps the dashboard reachable from Netlify with no manual steps:
-#   1. runs the FastAPI backend and a Cloudflare quick tunnel to it,
-#      restarting either if it exits;
-#   2. restarts the tunnel if it stops answering from the outside
-#      (quick tunnels have no uptime guarantee);
-#   3. whenever the tunnel URL changes (it does on every cloudflared
-#      restart), sets Netlify's VITE_BACKEND_URL env var and triggers a
-#      rebuild so the site points at the new URL (see netlify.toml).
+#   1. runs the FastAPI backend, restarting it if it exits;
+#   2. exposes it on the internet with Tailscale Funnel at this machine's
+#      permanent https://<machine>.<tailnet>.ts.net address, re-applying
+#      the Funnel config if the public address stops answering;
+#   3. makes sure Netlify's VITE_BACKEND_URL env var holds that address,
+#      rebuilding the site only if it had to change it (see netlify.toml).
+#      With Funnel the address never changes, so after the first run
+#      restarts need no Netlify rebuild.
+#
+# Tailscale itself runs as a Windows service (starts at boot) and remembers
+# the Funnel config, so this script mostly keeps the backend alive.
 #
 # Started at logon by scripts/install-autostart.ps1. Needs in .env:
 #   NETLIFY_AUTH_TOKEN  personal access token (Netlify > User settings > Applications)
@@ -17,10 +21,10 @@ $Root = Split-Path $PSScriptRoot -Parent
 $LogDir = Join-Path $Root 'logs'
 New-Item -ItemType Directory -Force $LogDir | Out-Null
 $WatchdogLog = Join-Path $LogDir 'watchdog.log'
-$TunnelLog = Join-Path $LogDir 'cloudflared.log'
+$Tailscale = 'C:\Program Files\Tailscale\tailscale.exe'
 
 $CheckIntervalSec = 30
-$PublicFailuresBeforeRestart = 4   # ~2 minutes of the tunnel not answering
+$PublicFailuresBeforeReset = 4   # ~2 minutes of the public address not answering
 
 function Log([string]$Message) {
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Message" | Add-Content -Path $WatchdogLog -Encoding utf8
@@ -52,7 +56,8 @@ function Test-Url([string]$Url) {
 # --- processes -------------------------------------------------------------
 
 function Stop-Stale {
-    # Leftovers from a previous watchdog run would hold port 8000 / a dead tunnel.
+    # Leftovers from a previous watchdog run would hold port 8000. Also
+    # clears out any cloudflared quick tunnel from the pre-Tailscale setup.
     Get-CimInstance Win32_Process | Where-Object {
         ($_.Name -eq 'cloudflared.exe' -and $_.CommandLine -match 'tunnel') -or
         ($_.Name -eq 'python.exe' -and $_.CommandLine -match 'app\.api\.server')
@@ -70,24 +75,27 @@ function Start-Backend {
         -RedirectStandardError (Join-Path $LogDir 'backend.err.log') -PassThru
 }
 
-function Start-Tunnel {
-    Log 'Starting cloudflared quick tunnel'
-    $proc = Start-Process -FilePath 'cloudflared' `
-        -ArgumentList 'tunnel', '--no-autoupdate', '--url', $LocalUrl -WindowStyle Hidden `
-        -RedirectStandardError $TunnelLog -RedirectStandardOutput (Join-Path $LogDir 'cloudflared.out.log') -PassThru
-    # cloudflared prints the assigned URL to stderr within a few seconds.
-    for ($i = 0; $i -lt 60 -and -not $proc.HasExited; $i++) {
-        Start-Sleep -Seconds 1
-        $m = Select-String -Path $TunnelLog -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($m) {
-            $url = $m.Matches[0].Value
-            Log "Tunnel URL: $url"
-            return @{ Process = $proc; Url = $url }
+# --- Tailscale Funnel ------------------------------------------------------
+
+function Get-PublicUrl {
+    # This machine's permanent MagicDNS name, e.g. desktop-x.tailnet.ts.net
+    try {
+        $status = & $Tailscale status --json | ConvertFrom-Json
+        if ($status.BackendState -ne 'Running') {
+            Log "Tailscale not running (state: $($status.BackendState))"
+            return $null
         }
+        return 'https://' + $status.Self.DNSName.TrimEnd('.')
+    } catch {
+        Log "Could not read Tailscale status: $($_.Exception.Message)"
+        return $null
     }
-    Log 'cloudflared did not report a URL - will retry'
-    if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
-    return $null
+}
+
+function Enable-Funnel {
+    # Idempotent; the config persists across reboots in the Tailscale service.
+    $out = & $Tailscale funnel --bg $ApiPort 2>&1 | Out-String
+    Log "tailscale funnel --bg ${ApiPort}: $($out.Trim() -replace '\s+', ' ')"
 }
 
 # --- Netlify ---------------------------------------------------------------
@@ -126,7 +134,7 @@ function Publish-BackendUrl([string]$Url) {
         try { $current = Invoke-Netlify GET "$envPath/VITE_BACKEND_URL$q" $null } catch {}
         if ($current) {
             if (($current.values | Where-Object { $_.context -eq 'all' }).value -eq $Url) {
-                Log 'Netlify already has this URL - no rebuild needed'
+                Log "Netlify already points at $Url - no rebuild needed"
                 return $true
             }
             # PUT replaces the whole variable. PATCH (the "update one value"
@@ -152,8 +160,9 @@ function Publish-BackendUrl([string]$Url) {
 Log '=== watchdog started ==='
 Stop-Stale
 $backend = Start-Backend
-$tunnel = $null
+$publicUrl = $null
 $publishedUrl = $null
+$funnelEnabled = $false
 $publicFailures = 0
 
 while ($true) {
@@ -163,24 +172,28 @@ while ($true) {
             $backend = Start-Backend
         }
 
-        if (-not $tunnel -or $tunnel.Process.HasExited) {
-            if ($tunnel) { Log 'cloudflared exited - restarting' }
-            $tunnel = Start-Tunnel
-            $publicFailures = 0
+        if (-not $publicUrl) {
+            $publicUrl = Get-PublicUrl
+            if ($publicUrl) { Log "Public URL: $publicUrl" }
         }
 
-        if ($tunnel) {
-            if ($tunnel.Url -ne $publishedUrl -and (Publish-BackendUrl $tunnel.Url)) {
-                $publishedUrl = $tunnel.Url
+        if ($publicUrl) {
+            if (-not $funnelEnabled) {
+                Enable-Funnel
+                $funnelEnabled = $true
+            }
+            if ($publicUrl -ne $publishedUrl -and (Publish-BackendUrl $publicUrl)) {
+                $publishedUrl = $publicUrl
             }
 
-            # Only blame the tunnel if the backend itself is answering.
-            if ((Test-Url $LocalUrl) -and -not (Test-Url $tunnel.Url)) {
+            # Only blame Funnel if the backend itself is answering.
+            if ((Test-Url $LocalUrl) -and -not (Test-Url $publicUrl)) {
                 $publicFailures++
-                if ($publicFailures -ge $PublicFailuresBeforeRestart) {
-                    Log "Tunnel unreachable from outside $publicFailures checks in a row - restarting it"
-                    Stop-Process -Id $tunnel.Process.Id -Force -ErrorAction SilentlyContinue
-                    $tunnel = $null
+                if ($publicFailures -ge $PublicFailuresBeforeReset) {
+                    Log "Public URL unreachable $publicFailures checks in a row - re-applying Funnel"
+                    $publicUrl = $null
+                    $funnelEnabled = $false
+                    $publicFailures = 0
                 }
             } else {
                 $publicFailures = 0

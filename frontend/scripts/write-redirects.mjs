@@ -1,8 +1,7 @@
 // Writes dist/_redirects so Netlify proxies /api/* to the backend's
-// current public URL. That URL is a Cloudflare quick tunnel, which changes
-// on every restart. scripts/watchdog.ps1 (repo root) keeps the
-// VITE_BACKEND_URL Netlify env var up to date and triggers a rebuild,
-// which is why the URL can't be hardcoded in netlify.toml. Netlify
+// public URL (its Tailscale Funnel address), taken from the
+// VITE_BACKEND_URL Netlify env var that scripts/watchdog.ps1 (repo root)
+// maintains, so the URL isn't hardcoded in netlify.toml. Netlify
 // evaluates _redirects before netlify.toml's rules, so the SPA fallback
 // in netlify.toml still applies to everything else.
 import { writeFileSync } from "node:fs";

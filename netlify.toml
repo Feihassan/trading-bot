@@ -1,11 +1,12 @@
 # The backend runs natively on the Windows machine next to the MT5
 # terminal (render.yaml's Render deploy has no MT5 - see README) and is
-# exposed through a Cloudflare quick tunnel. A quick tunnel's URL changes
-# every time cloudflared restarts, so it is NOT hardcoded here:
+# exposed with Tailscale Funnel at the machine's permanent
+# https://<machine>.<tailnet>.ts.net address. That address is NOT
+# hardcoded here:
 #
 # - scripts/watchdog.ps1 (started at logon by scripts/install-autostart.ps1)
-#   keeps the backend + tunnel running, and whenever the tunnel URL changes
-#   it sets the VITE_BACKEND_URL Netlify env var and triggers a rebuild.
+#   keeps the backend running and makes sure the VITE_BACKEND_URL Netlify
+#   env var holds the Funnel address, rebuilding only if it had to change it.
 # - The build writes dist/_redirects proxying /api/* to that URL
 #   (frontend/scripts/write-redirects.mjs).
 # - /ws/live connects straight to VITE_BACKEND_URL from the browser,
